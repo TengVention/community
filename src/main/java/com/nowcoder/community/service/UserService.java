@@ -3,22 +3,17 @@ package com.nowcoder.community.service;
 import com.nowcoder.community.dao.UserMapper;
 import com.nowcoder.community.entity.LoginTicket;
 import com.nowcoder.community.entity.User;
-import com.nowcoder.community.util.CommunityConstant;
-import com.nowcoder.community.util.CommunityUtil;
-import com.nowcoder.community.util.MailClient;
-import com.nowcoder.community.util.RedisKeyUtil;
+import com.nowcoder.community.util.*;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -35,6 +30,9 @@ public class UserService implements CommunityConstant {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private HostHolder hostHolder;
 
     @Value("${community.path.domain}")
     private String domain;
@@ -188,8 +186,37 @@ public class UserService implements CommunityConstant {
         return rows;
     }
 
-    public int changePassword(int userId, String password){
-        return userMapper.updatePassword(userId, password);
+//    public int changePassword(int userId, String password){
+//        int rows = userMapper.updatePassword(userId, password);
+//        clearCache(userId);
+//        return rows;
+//    }
+
+    public Map<String , Object> changePassword(int userId, String password, String oldpassword) {
+        Map<String , Object> map = new HashMap<>();
+
+        //空值处理
+        if (StringUtils.isBlank(oldpassword)) {
+            map.put("oldPasswordMsg","原密码不能为空！");
+            return map;
+        }
+        if (StringUtils.isBlank(password)) {
+            map.put("passwordMsg","新密码不能为空！");
+            return map;
+        }
+
+        User user = userMapper.selectById(userId);
+
+        //验证密码
+        oldpassword = CommunityUtil.md5(oldpassword + user.getSalt());
+        if (!user.getPassword().equals(oldpassword)) {
+            map.put("oldPasswordMsg","原密码不正确！");
+            return map;
+        }
+        password = CommunityUtil.md5(password + user.getSalt());
+        userMapper.updatePassword(userId, password);
+
+        return map;
     }
 
     public User findUserByName(String username) {
@@ -214,6 +241,26 @@ public class UserService implements CommunityConstant {
     private void clearCache(int userId) {
         String redisKey = RedisKeyUtil.getUserKey(userId);
         redisTemplate.delete(redisKey);
+    }
+
+    public Collection<? extends GrantedAuthority> getAuthorities(int userId) {
+        User user = this.findUserById(userId);
+
+        List<GrantedAuthority> list = new ArrayList<>();
+        list.add(new GrantedAuthority() {
+            @Override
+            public String getAuthority() {
+                switch (user.getType()) {
+                    case 1:
+                        return AUTHORITY_ADMIN;
+                    case 2:
+                        return AUTHORITY_MODERATOR;
+                        default:
+                            return AUTHORITY_USER;
+                }
+            }
+        });
+        return list;
     }
 
 }

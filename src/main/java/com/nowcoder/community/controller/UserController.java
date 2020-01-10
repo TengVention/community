@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/user")
@@ -116,6 +117,29 @@ public class UserController implements CommunityConstant {
             logger.error("读取头像失败: " + e.getMessage());
         }
     }
+
+    @RequestMapping(path = "/passchange", method = RequestMethod.POST)
+    public String changePassword(Model model,String oldpassword, String password){
+        User user = hostHolder.getUser();
+//        if (!user.getPassword().equals(oldpassword)){
+//            model.addAttribute("pwerror","密码不正确！");
+//            return "/site/setting";
+//        }
+//        password = CommunityUtil.md5(password + user.getSalt());
+        Map<String, Object> map = userService.changePassword(user.getId(), password,oldpassword);
+
+        if(map == null || map.isEmpty()) {
+            model.addAttribute("msg","您已成功修改密码！请牢记哦");
+            model.addAttribute("target","/index");
+            return "/site/operate-result";
+        }else {
+            model.addAttribute("oldPasswordMsg",map.get("oldPasswordMsg"));
+            model.addAttribute("passwordMsg",map.get("passwordMsg"));
+            return "/site/setting";
+        }
+
+    }
+
 
     // 个人主页
     @RequestMapping(path = "/profile/{userId}", method = RequestMethod.GET)
