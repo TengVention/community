@@ -29,7 +29,7 @@ public class DataController {
         long uv = dataService.calculateUV(start, end);
         model.addAttribute("uvResult", uv);
         model.addAttribute("uvStartDate",start);
-        model.addAttribute("uvEndDate", start);
+        model.addAttribute("uvEndDate", end);
         return "forward:/data";
     }
 
@@ -40,7 +40,7 @@ public class DataController {
         long dau = dataService.calculateDAU(start, end);
         model.addAttribute("dauResult", dau);
         model.addAttribute("dauStartDate",start);
-        model.addAttribute("dauEndDate", start);
+        model.addAttribute("dauEndDate", end);
         return "forward:/data";
     }
 }
